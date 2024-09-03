@@ -1,0 +1,37 @@
+- name: Deploy Node.js application with Nginx
+  hosts: webserver
+  vars:
+    GIT_REPO: https://github.com/compimprove/express-helloworld
+    GIT_BRANCH: main
+    USER: compimprove
+    PROJECT_NAME: express-helloworld
+    NODE_VERSION: v20.16.0
+  environment:
+    PATH: "{{ ansible_env.HOME }}/.nvm/versions/node/{{ NODE_VERSION }}/bin:{{ ansible_env.PATH }}"
+
+  tasks:
+    - name: Clone or update repository into {{PROJECT_NAME}} folder
+      git:
+        repo: "{{ GIT_REPO }}"
+        version: "{{ GIT_BRANCH }}"
+        dest: "{{ ansible_env.HOME }}/{{ USER }}/{{ PROJECT_NAME }}"
+        update: yes
+        force: yes
+
+    - name: Install dependencies
+      ansible.builtin.shell: "npm install"
+      args:
+        chdir: "{{ ansible_env.HOME }}/{{ USER }}/{{ PROJECT_NAME }}"
+
+    # - name: Build the project
+    #   ansible.builtin.shell: "npm run build || true"
+    #   args:
+    #     chdir: "{{ ansible_env.HOME }}/{{ USER }}/{{ PROJECT_NAME }}"
+
+    - name: Start the project
+      ansible.builtin.shell: |
+        pm2 stop "{{ PROJECT_NAME }}" || true
+        pm2 delete "{{ PROJECT_NAME }}" || true
+        pm2 start npm --name "{{ PROJECT_NAME }}" -- start
+      args:
+        chdir: "{{ ansible_env.HOME }}/{{ USER }}/{{ PROJECT_NAME }}"
